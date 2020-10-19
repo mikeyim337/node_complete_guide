@@ -5,13 +5,8 @@ const express = require("express");
 const bodyParser = require("body-parser");
 
 const errorController = require("./controllers/error");
-const sequelize = require("./util/database");
-const Product = require("./models/product");
+const mongoConnect = require("./util/database").mongoConnect;
 const User = require("./models/user");
-const Cart = require("./models/cart");
-const CartItem = require("./models/cart-item");
-const Order = require("./models/order");
-const OrderItem = require("./models/order-item");
 
 const app = express();
 
@@ -25,9 +20,9 @@ app.use(bodyParser.urlencoded({ extended: false }));
 app.use(express.static(path.join(__dirname, "public")));
 
 app.use((req, res, next) => {
-  User.findByPk(1)
+  User.findById("5f8ae9b353e482097327c66e")
     .then((user) => {
-      req.user = user;
+      req.user = new User(user.name, user.email, user.cart, user._id);
       next();
     })
     .catch((err) => {
@@ -40,44 +35,6 @@ app.use(shopRoutes);
 
 app.use(errorController.get404);
 
-//associate user with products production. AND cascade makes sure that when user is deleted then the products associated with user is also deleted
-Product.belongsTo(User, { constraints: true, onDelete: "CASCADE" });
-User.hasMany(Product); //one user has many products (implied by belongsTo so optional)
-
-//user-cart relations
-User.hasOne(Cart);
-Cart.belongsTo(User);
-
-//Cart-product relations
-Cart.belongsToMany(Product, { through: CartItem }); // one cart can have multiple products
-Product.belongsToMany(Cart, { through: CartItem }); //a single product can be in multiple carts
-
-//Order-user-product relations
-Order.belongsTo(User);
-User.hasMany(Order);
-Order.belongsToMany(Product, { through: OrderItem });
-
-sequelize
-  //.sync({ force: true }) //this overrides the if not exists
-  .sync()
-  .then((result) => {
-    return User.findByPk(1);
-    //console.log(result);
-  })
-  .then((user) => {
-    if (!user) {
-      return User.create({
-        name: "Mike",
-        email: "test@test.com",
-      });
-    }
-    return user;
-  })
-  .then((user) => {
-    //console.log(user);
-    return user.createCart();
-  })
-  .then((cart) => app.listen(3000))
-  .catch((err) => {
-    console.log(err);
-  });
+mongoConnect(() => {
+  app.listen(3000);
+});
