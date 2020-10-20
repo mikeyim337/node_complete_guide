@@ -4,7 +4,6 @@ const Order = require("../models/order");
 exports.getProducts = (req, res, next) => {
   Product.find()
     .then((products) => {
-      console.log(products);
       res.render("shop/product-list", {
         prods: products,
         pageTitle: "All Products",
@@ -48,7 +47,7 @@ exports.getIndex = (req, res, next) => {
 exports.getCart = (req, res, next) => {
   req.user
     .populate("cart.items.productId")
-    .execPopulate()
+    .execPopulate() // a mongoose method that turns the result of populate into a promise
     .then((user) => {
       const products = user.cart.items;
       res.render("shop/cart", {
@@ -68,7 +67,7 @@ exports.postCart = (req, res, next) => {
     })
     .then((result) => {
       console.log(result);
-      res.redirect("/cart");
+      res.redirect("/products");
     });
 };
 
@@ -87,15 +86,23 @@ exports.postOrder = (req, res, next) => {
     .populate("cart.items.productId")
     .execPopulate()
     .then((user) => {
+      console.log("this is user cart:   " + user.cart.items);
+      let price = 0;
       const products = user.cart.items.map((i) => {
-        return { quantity: i.quantity, product: { ...i.productId._doc } }; //with the sperad operator we pull out all the data in that doucment we retrieved and store it in a new object
+        price += i.productId.price * i.quantity;
+        return {
+          quantity: i.quantity,
+          product: { ...i.productId._doc },
+        }; //with the sperad operator we pull out all the data in that doucment we retrieved and store it in a new object
       }); // get the products that are in the user's cart
+
       const order = new Order({
         user: {
           name: req.user.name,
           userId: req.user,
         },
         products: products,
+        totalPrice: price,
       });
       return order.save();
     })
