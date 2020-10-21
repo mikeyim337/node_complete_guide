@@ -1,6 +1,18 @@
+require("dotenv").config();
+
 const bcrypt = require("bcryptjs");
+const nodemailer = require("nodemailer");
+const sendgridTransport = require("nodemailer-sendgrid-transport");
 
 const User = require("../models/user");
+
+const transporter = nodemailer.createTransport(
+  sendgridTransport({
+    auth: {
+      api_key: process.env.SENDGRID_API_KEY,
+    },
+  })
+);
 
 exports.getLogin = (req, res, next) => {
   let message = req.flash("error");
@@ -91,7 +103,14 @@ exports.postSignup = (req, res, next) => {
         })
         .then((result) => {
           res.redirect("/login");
-        }); //12 is considered higly secured. how many times to hash it
+          return transporter.sendMail({
+            to: email,
+            from: process.env.EMAIL,
+            subject: "Signup succeeded!",
+            html: "<h1>You successfully signed up!</h1>",
+          });
+        })
+        .catch((err) => console.log(err)); //12 is considered higly secured. how many times to hash it
     })
     .catch((err) => {
       console.log(err);
