@@ -49,11 +49,14 @@ app.use((req, res, next) => {
   }
   User.findById(req.session.user._id)
     .then((user) => {
+      if (!user) {
+        return next();
+      }
       req.user = user; //connect to mongoose user model so it has all the useful functions
       next();
     })
     .catch((err) => {
-      console.log("something is wrong: " + req.session);
+      throw new Error(err);
     });
 });
 
@@ -68,7 +71,14 @@ app.use("/admin", adminRoutes);
 app.use(shopRoutes);
 app.use(authRoutes);
 
+app.get("/500", errorController.get500);
+
 app.use(errorController.get404);
+
+//central error handling middleware
+app.use((error, req, res, next) => {
+  res.redirect("/500");
+});
 
 mongoose
   .connect(MONGODB_URI)
